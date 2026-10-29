@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="A 3-question quiz that matches final-year engineering students to a 60-minute AI project, with seat ticket, referral link, campus leaderboard and a plan model.">
+<title>AI Project Match</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow column built for a phone opened from a WhatsApp link.
+   Quiz -> project card -> seat ticket -> leaderboard -> plan model. Hard-shadow cards only on the project and the ticket. */
+:root{
+  --bg:#EEF1F4; --paper:#FFFFFF; --ink:#0F1720; --muted:#55606C; --line:#D2D9E0;
+  --accent:#FFC21A; --on-accent:#0F1720; --shadow:#0F1720;
+  --ok:#0F7A55; --warn:#9A5B00; --err:#B3261E; --c3:#5B7C99; --c4:#8B95A1;
+  --f-display:"Bricolage Grotesque","Arial Black",system-ui,sans-serif;
+  --f-body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1116; --paper:#141B22; --ink:#EDF1F5; --muted:#9AA6B2; --line:#26303A;
+    --shadow:#FFC21A; --ok:#3DD6A0; --warn:#F0B35A; --err:#FF8A80; --c3:#7FA3C2; --c4:#7C8793;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1116; --paper:#141B22; --ink:#EDF1F5; --muted:#9AA6B2; --line:#26303A;
+  --shadow:#FFC21A; --ok:#3DD6A0; --warn:#F0B35A; --err:#FF8A80; --c3:#7FA3C2; --c4:#7C8793;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:16px; line-height:1.5;
+  padding-block:20px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:720px;margin:0 auto}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.mono{font-family:var(--f-mono)}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.refbar{border:1.5px solid var(--ink);background:var(--paper);padding:10px 14px;margin-bottom:16px;font-size:14px}
+.topbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.topbar span:first-child::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);border:1.5px solid var(--ink);margin-right:8px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(2.3rem,10vw,4rem);line-height:1.02;letter-spacing:-.02em;text-wrap:balance;margin-top:22px}
+mark{background:var(--accent);color:var(--on-accent);padding:0 .14em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.lead{max-width:54ch;margin-top:16px;font-size:1.06rem}
+.cta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 20px;border:2px solid var(--ink);border-radius:6px;background:var(--paper);font-weight:700;text-decoration:none}
+.btn.accent{background:var(--accent);color:var(--on-accent)}
+.btn.dark{background:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.5;cursor:default}
+.linkbtn{background:none;border:0;padding:6px 0;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+
+.strip{display:flex;gap:3px;margin-top:28px}
+.seg{min-width:0;border:1.5px solid var(--ink);padding:6px 6px 7px;font-family:var(--f-mono);font-size:11px;line-height:1.35;background:var(--paper)}
+.seg b{display:block;font-weight:500;color:var(--muted)}
+.seg.ship{background:var(--accent);color:var(--on-accent)}
+.seg.ship b{color:var(--on-accent)}
+.strip-cap{margin-top:8px;color:var(--muted);font-size:13px}
+.seats{margin-top:22px}
+.seats-row{display:flex;justify-content:space-between;gap:12px;font-size:14px;margin-bottom:6px}
+.track{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.fill{height:100%;background:var(--accent);border-right:2px solid var(--ink);transition:width .4s}
+
+.sec{margin-top:44px;padding-top:18px;border-top:2px solid var(--ink)}
+.sec>.eyebrow{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h2{font-family:var(--f-display);font-weight:800;font-size:clamp(1.55rem,6vw,2.2rem);line-height:1.08;letter-spacing:-.01em;text-wrap:balance;margin-top:8px}
+.sub{color:var(--muted);margin-top:8px;max-width:58ch}
+
+.qprog{display:flex;gap:4px;margin-top:14px}
+.qprog i{flex:1;height:5px;background:var(--line)}
+.qprog i.on{background:var(--ink)}
+.opts{display:grid;grid-template-columns:1fr;gap:8px;margin-top:16px}
+@media (min-width:520px){.opts{grid-template-columns:1fr 1fr}}
+.opt{min-height:56px;text-align:left;padding:12px 16px;background:var(--paper);border:1.5px solid var(--line);border-radius:6px;font-weight:500}
+.opt:hover{border-color:var(--ink)}
+.opt:active{background:var(--accent);color:var(--on-accent);border-color:var(--ink)}
+
+.card{background:var(--paper);border:2px solid var(--ink);box-shadow:5px 5px 0 var(--shadow);padding:18px;margin-top:18px}
+.card h3{font-family:var(--f-display);font-weight:800;font-size:clamp(1.5rem,6.5vw,2rem);line-height:1.08;margin-top:6px;text-wrap:balance}
+.card p{margin-top:10px}
+.kv{display:grid;grid-template-columns:1fr;gap:4px;margin-top:14px}
+.kv div{min-width:0}
+.kv dt{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kv dd{margin:0 0 8px}
+.resume{background:var(--bg);padding:10px 12px;font-family:var(--f-mono);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+
+form{margin-top:22px;display:grid;gap:14px}
+label{display:grid;gap:6px;font-weight:700;font-size:14px}
+input[type=text],input[type=tel]{width:100%;min-height:48px;padding:10px 12px;background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;font-size:16px;font-weight:400}
+.hint{font-weight:400;color:var(--muted);font-size:13px}
+.err{color:var(--err);font-size:14px;min-height:1.3em}
+
+.ticket-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.seatno{font-family:var(--f-display);font-weight:800;font-size:3rem;line-height:1}
+.perf{border:0;border-top:2px dashed var(--ink);margin:16px 0}
+.linkrow{display:flex;gap:8px;flex-wrap:wrap}
+.linkrow input{flex:1 1 220px;min-width:0}
+.share-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+
+.board{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:14px}
+.board li{display:grid;grid-template-columns:1.6rem 1fr auto;gap:2px 10px;align-items:baseline}
+.rank{font-family:var(--f-mono);color:var(--muted)}
+.bname{min-width:0;font-weight:500;overflow-wrap:anywhere}
+.bcount{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.bbar{grid-column:2 / 4;height:8px;background:var(--line)}
+.bbar span{display:block;height:100%;background:var(--c4)}
+.board li.top .bbar span{background:var(--accent);border-right:2px solid var(--ink)}
+.board li.me .bbar span{background:var(--ink)}
+.tag{font-family:var(--f-mono);font-size:11px;border:1.5px solid var(--ink);padding:0 6px;margin-left:6px;vertical-align:1px}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:12px;padding:2px 10px;border:1.5px solid currentColor;border-radius:99px}
+.pill.ok{color:var(--ok)}
+.pill.warn{color:var(--warn)}
+
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.presets button{min-height:44px;padding:0 16px;background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;font-weight:700}
+.presets button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.sliders{display:grid;gap:14px;margin-top:18px}
+.srow{display:grid;gap:4px}
+.srow .top{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.srow output{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--ink);min-height:32px}
+.out{margin-top:24px;background:var(--paper);border:1.5px solid var(--ink);padding:16px}
+.total{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px}
+.total strong{font-family:var(--f-display);font-weight:800;font-size:3.2rem;line-height:1;font-variant-numeric:tabular-nums}
+.stack-wrap{position:relative;margin-top:30px}
+.marker{position:absolute;top:-22px;bottom:-4px;width:0;border-left:2px solid var(--ink)}
+.marker span{position:absolute;top:0;right:6px;font-family:var(--f-mono);font-size:11px;white-space:nowrap;transform:translateY(-2px)}
+.stack{display:flex;height:30px;border:1.5px solid var(--ink);background:var(--bg);overflow:hidden}
+.stack div{height:100%;transition:width .3s}
+.s1{background:var(--accent)} .s2{background:var(--ink)} .s3{background:var(--c3)} .s4{background:var(--c4)}
+.legend{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.legend li{display:grid;grid-template-columns:14px 1fr auto auto;gap:10px;align-items:center;font-size:14px}
+.legend i{width:14px;height:14px;border:1.5px solid var(--ink)}
+.legend .n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.legend .p{font-family:var(--f-mono);color:var(--muted);min-width:3.2em;text-align:right}
+.facts{display:grid;grid-template-columns:1fr;gap:8px;margin-top:16px;font-size:14px}
+@media (min-width:520px){.facts{grid-template-columns:1fr 1fr 1fr}}
+.facts div{border-top:1.5px solid var(--line);padding-top:8px}
+.facts b{display:block;font-family:var(--f-mono);font-weight:500;font-size:15px}
+.gap{margin-top:16px;font-size:15px}
+.assume{margin-top:12px;color:var(--muted);font-size:13px}
+
+footer{margin-top:48px;padding-top:16px;border-top:1.5px solid var(--line);font-size:13px;color:var(--muted);display:grid;gap:8px}
+@media (prefers-reduced-motion:reduce){.fill,.stack div{transition:none}}
+</style>
+
+<style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="refbar" class="refbar" hidden></div>
+
+  <header>
+    <div class="topbar"><span>Free online workshop</span><span>Sat 7 Nov · 7:00 PM IST</span></div>
+    <h1>Build your first AI project in <mark>60 minutes</mark>.</h1>
+    <p class="lead">Answer three questions. We match you with a project that fits your branch. You build it live and leave with a project link for your resume.</p>
+    <div class="cta-row">
+      <button class="btn accent" type="button" data-go="quiz">Find my project</button>
+      <button class="btn" type="button" data-go="plan">See the plan model</button>
+    </div>
+
+    <div class="strip" role="img" aria-label="The 60 minutes: setup 0 to 10, build 10 to 35, test 35 to 50, ship 50 to 60">
+      <div class="seg" style="flex:10"><b>0–10</b>Setup</div>
+      <div class="seg" style="flex:25"><b>10–35</b>Build</div>
+      <div class="seg" style="flex:15"><b>35–50</b>Test</div>
+      <div class="seg ship" style="flex:10"><b>50–60</b>Ship</div>
+    </div>
+    <p class="strip-cap">Your 60 minutes, start to finish. No prior AI knowledge needed.</p>
+
+    <div class="seats">
+      <div class="seats-row"><span><b id="seatsText">216 of 500 seats taken</b></span><span class="mono" style="font-size:12px;color:var(--muted)">sample count</span></div>
+      <div class="track"><div class="fill" id="seatsFill" style="width:43%"></div></div>
+    </div>
+  </header>
+
+  <section class="sec" id="quiz" aria-live="polite">
+    <p class="eyebrow"><span>Find my project</span><span id="qstep">1 of 3</span></p>
+    <h2 id="qtitle">What's your branch?</h2>
+    <div class="qprog" id="qprog"><i class="on"></i><i></i><i></i></div>
+    <div class="opts" id="qopts"></div>
+    <button class="linkbtn" id="qback" type="button" hidden style="margin-top:12px">Back</button>
+  </section>
+
+  <section class="sec" id="result" hidden>
+    <p class="eyebrow"><span>Your match</span><span id="rlevel"></span></p>
+    <div class="card">
+      <p class="eyebrow">Your 60-minute project</p>
+      <h3 id="rname" tabindex="-1"></h3>
+      <p id="rbuild"></p>
+      <dl class="kv">
+        <div><dt>Branch lens</dt><dd id="rbranch"></dd></div>
+        <div><dt>Resume line you walk away with</dt><dd class="resume" id="rresume"></dd></div>
+      </dl>
+    </div>
+    <button class="linkbtn" id="retake" type="button" style="margin-top:10px">Try different answers</button>
+
+    <h2 style="margin-top:28px">Reserve your seat</h2>
+    <p class="sub">Free. Takes 20 seconds. Your campus gets the point.</p>
+    <form id="regform" novalidate>
+      <label for="f-name">Your name
+        <input id="f-name" type="text" autocomplete="name" placeholder="Poorvi Rai">
+      </label>
+      <label for="f-college">College
+        <input id="f-college" type="text" autocomplete="organization" placeholder="Your engineering college">
+      </label>
+      <label for="f-wa">WhatsApp number <span class="hint">10 digits, for the joining link</span>
+        <input id="f-wa" type="tel" inputmode="numeric" autocomplete="tel" placeholder="98765 43210">
+      </label>
+      <p class="err" id="ferr" role="alert"></p>
+      <button class="btn accent" type="submit">Reserve my seat</button>
+    </form>
+  </section>
+
+  <section class="sec" id="ticket" hidden>
+    <p class="eyebrow"><span>You're in</span><span>Free entry</span></p>
+    <div class="card">
+      <div class="ticket-top">
+        <div>
+          <p class="eyebrow">Seat</p>
+          <div class="seatno" id="tseat">#217</div>
+        </div>
+        <div style="text-align:right">
+          <p class="eyebrow">Sat 7 Nov</p>
+          <p class="mono" style="margin-top:2px">7:00 PM IST</p>
+        </div>
+      </div>
+      <hr class="perf">
+      <p id="tname" style="font-weight:700;margin-top:0"></p>
+      <p id="tcollege" style="margin-top:2px"></p>
+      <p style="margin-top:10px"><span class="eyebrow">Building</span><br><span id="tproject" style="font-weight:700"></span></p>
+    </div>
+
+    <h2 style="margin-top:28px">Bring your campus. Climb the board.</h2>
+    <p class="sub">Every friend who joins with your link counts for your college. Top 6 referrers win a ₹200 recharge or voucher each.</p>
+    <div class="linkrow" style="margin-top:14px">
+      <input type="text" id="reflink" readonly aria-label="Your referral link">
+      <button class="btn" type="button" id="copylink">Copy link</button>
+    </div>
+    <div class="share-row">
+      <a class="btn accent" id="wa" href="https://wa.me/" target="_blank" rel="noopener">Share on WhatsApp</a>
+    </div>
+    <p class="note" id="copynote" role="status"></p>
+  </section>
+
+  <section class="sec" id="boardsec">
+    <p class="eyebrow"><span>Campus leaderboard</span><span>sample data</span></p>
+    <h2>Which campus is filling up fastest?</h2>
+    <p class="sub">The top campus gets a shout-out live in the workshop.</p>
+    <ol class="board" id="board"></ol>
+  </section>
+
+  <section class="sec" id="plan">
+    <p class="eyebrow"><span>Plan model</span><span>for reviewers</span></p>
+    <h2>How the 500 registrations come in</h2>
+    <p class="sub">Move the assumptions. The bar shows where registrations come from over the 7 days, and what it costs against the ₹2,000 budget.</p>
+    <div class="presets" id="presets" role="group" aria-label="Scenario">
+      <button type="button" data-p="cons" aria-pressed="false">Cautious</button>
+      <button type="button" data-p="base" aria-pressed="true">Base case</button>
+      <button type="button" data-p="stretch" aria-pressed="false">Stretch</button>
+    </div>
+    <div class="sliders" id="sliders"></div>
+
+    <div class="out">
+      <div class="total">
+        <strong id="ptotal">520</strong>
+        <span>registrations in 7 days</span>
+        <span class="pill ok" id="pstatus">On target</span>
+      </div>
+      <div class="stack-wrap">
+        <div class="marker" id="pmarker"><span>500 target</span></div>
+        <div class="stack" id="pstack" role="img" aria-label="Registrations by channel"></div>
+      </div>
+      <ul class="legend" id="plegend"></ul>
+      <div class="facts">
+        <div>Cost per registration<b id="pcost">₹3.8</b></div>
+        <div>Needed per day<b id="pday">72</b></div>
+        <div>Budget<b>₹1,200 + 500 + 300</b><span class="hint">rewards, boost, buffer</span></div>
+      </div>
+      <p class="gap" id="pgap"></p>
+      <p class="assume">Fixed assumptions: 150 members per group, 8,000 people reached on LinkedIn, Instagram and Discord, ₹500 boost at about ₹3 a click with 30% of clicks registering.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Prototype built for the Growth Challenge. Seat count and leaderboard use sample data. Registrations stay on this device. With 24 more hours I would connect a shared sheet so every campus count is live.</p>
+    <p class="mono" id="events" style="font-size:12px"></p>
+    <button class="linkbtn" id="reset" type="button" style="justify-self:start">Reset demo on this device</button>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var mem = {};
+  var store = {
+    get: function(k, d){
+      try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }
+      catch(e){ return (k in mem) ? mem[k] : d; }
+    },
+    set: function(k, v){
+      mem[k] = v;
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){}
+    },
+    del: function(k){
+      delete mem[k];
+      try { localStorage.removeItem(k); } catch(e){}
+    }
+  };
+  var $ = function(id){ return document.getElementById(id); };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- event log (the funnel, tracked per device) ---------- */
+  var ev = store.get('apm-ev', {visits:0, qstart:0, qdone:0, reg:0, share:0});
+  function track(k){ ev[k] = (ev[k] || 0) + 1; store.set('apm-ev', ev); renderEvents(); }
+  function renderEvents(){
+    $('events').textContent = 'Logged on this device: opens ' + ev.visits + ' · quiz started ' + ev.qstart +
+      ' · quiz finished ' + ev.qdone + ' · registered ' + ev.reg + ' · shared ' + ev.share;
+  }
+
+  /* ---------- quiz data ---------- */
+  var QS = [
+    {key:'branch', title:"What's your branch?", opts:[["cse","CSE / IT / AI"],["ece","ECE / EEE"],["core","Mech / Civil / Chem"],["other","Something else"]]},
+    {key:'interest', title:"What would you enjoy building?", opts:[["health","Health and wellness"],["campus","Campus life and studies"],["money","Money and budgeting"],["games","Games and fun"],["careers","Jobs and careers"]]},
+    {key:'level', title:"How much have you coded?", opts:[["none","I have never coded"],["basic","I know a little"],["comfy","I code comfortably"]]}
+  ];
+  var BRANCH = {cse:"CSE / IT / AI", ece:"ECE / EEE", core:"Mech / Civil / Chem", other:"Open to all branches"};
+  var LEVEL = {none:"Beginner path · no coding needed", basic:"Builder path · you tweak the code", comfy:"Fast track · you add an extra feature"};
+  var IDEAS = {
+    cse:{
+      health:["SymptomSense Triage Bot","A chatbot that asks about symptoms and suggests whether to rest, call a pharmacist or see a doctor.","Built an AI chatbot that turns symptom answers into a plain-language next step."],
+      campus:["Syllabus Doubt Solver","A bot that answers questions from your own syllabus PDFs and tells you which page the answer came from.","Built an AI doubt solver over course PDFs that cites the page for every answer."],
+      money:["Spend Story","Upload a month of expenses and get a plain-English story of where your money went, plus one thing to change.","Built an AI tool that turns raw expense data into a short spending summary."],
+      games:["Quiz Duel","Pick any topic, the AI writes ten questions, and you challenge a friend with a shareable link.","Built an AI quiz generator with scoring and a shareable challenge link."],
+      careers:["Resume vs JD Scorer","Paste your resume and a job post to get a match score and three edits that raise it.","Built an AI resume scorer that compares a resume with a job description."]
+    },
+    ece:{
+      health:["Heartbeat Pattern Spotter","Feed in sample heart-rate readings and the AI flags unusual patterns in plain words.","Built an AI tool that flags unusual patterns in sensor data."],
+      campus:["Datasheet Whisperer","Ask questions about any component datasheet and get answers that point to the pin table they came from.","Built an AI assistant that answers questions from component datasheets."],
+      money:["Bill Predictor","Enter your appliances and hours of use to forecast next month's electricity bill.","Built an AI estimator that forecasts electricity bills from appliance usage."],
+      games:["Gesture Gamepad","Control a simple browser game with hand gestures from your webcam.","Built a webcam gesture controller for a browser game."],
+      careers:["Core Role Matcher","List your skills and see which core-sector roles fit, and what to learn to close the gap.","Built an AI matcher between student skills and core engineering roles."]
+    },
+    core:{
+      health:["Workshop Safety Spotter","Upload a workshop photo and the AI lists visible safety risks with a fix for each.","Built an AI tool that spots safety risks in workshop photos."],
+      campus:["Lab Report Drafter","Enter your readings and get a structured lab report draft with observations and a conclusion.","Built an AI assistant that drafts lab reports from raw readings."],
+      money:["Project Cost Estimator","List materials and quantities and get a cost estimate with the three biggest cost drivers.","Built an AI estimator for project material costs."],
+      games:["Engineering Trivia Duel","Mechanics and materials questions generated on demand and played head to head with a friend.","Built an AI trivia game on core engineering topics."],
+      careers:["Core Internship Finder","Describe your skills and get a shortlist of core internship types to apply for, with a pitch line for each.","Built an AI helper that shortlists internships and drafts pitch lines."]
+    },
+    other:{
+      health:["Wellness Check-in Bot","A daily check-in bot that asks three questions and suggests one small habit.","Built an AI check-in bot that suggests a daily habit."],
+      campus:["Campus Helper Bot","A bot that answers common questions about your college: timings, forms, clubs and events.","Built an AI helper bot for common campus questions."],
+      money:["Budget Buddy","Tell it your monthly money in and out and get a simple weekly budget.","Built an AI budget planner for students."],
+      games:["Riddle Master","The AI invents riddles on any topic and keeps score against your friends.","Built an AI riddle game with scoring."],
+      careers:["Interview Practice Partner","The AI asks interview questions for your target role and gives feedback on your answers.","Built an AI interview practice tool with answer feedback."]
+    }
+  };
+
+  /* ---------- state ---------- */
+  var step = 0, ans = {branch:null, interest:null, level:null}, started = false, project = null;
+  var reg = store.get('apm-reg', null);
+  var SEAT_BASE = 216;
+  var pendingRef = null;
+
+  function go(id){
+    var el = $(id);
+    if (el) el.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'});
+  }
+  document.querySelectorAll('[data-go]').forEach(function(b){
+    b.addEventListener('click', function(){ go(b.getAttribute('data-go')); });
+  });
+
+  /* ---------- quiz ---------- */
+  function renderQuiz(){
+    var q = QS[step];
+    $('qstep').textContent = (step + 1) + ' of 3';
+    $('qtitle').textContent = q.title;
+    var prog = $('qprog').children;
+    for (var i = 0; i < prog.length; i++) prog[i].className = i <= step ? 'on' : '';
+    var box = $('qopts');
+    box.textContent = '';
+    q.opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'opt'; b.textContent = o[1];
+      b.addEventListener('click', function(){ pick(q.key, o[0]); });
+      box.appendChild(b);
+    });
+    $('qback').hidden = step === 0;
+  }
+  function pick(key, val){
+    if (!started){ started = true; track('qstart'); }
+    ans[key] = val;
+    if (step < QS.length - 1){ step++; renderQuiz(); }
+    else showResult();
+  }
+  $('qback').addEventListener('click', function(){ if (step > 0){ step--; renderQuiz(); } });
+
+  function showResult(){
+    var idea = IDEAS[ans.branch][ans.interest];
+    project = {name:idea[0], build:idea[1], resume:idea[2]};
+    $('rname').textContent = project.name;
+    $('rbuild').textContent = project.build;
+    $('rbranch').textContent = BRANCH[ans.branch];
+    $('rresume').textContent = project.resume;
+    $('rlevel').textContent = LEVEL[ans.level];
+    $('quiz').hidden = true;
+    $('result').hidden = false;
+    track('qdone');
+    go('result');
+    try { $('rname').focus({preventScroll:true}); } catch(e){}
+  }
+  $('retake').addEventListener('click', function(){
+    step = 0; ans = {branch:null, interest:null, level:null};
+    $('result').hidden = true; $('quiz').hidden = false;
+    renderQuiz(); go('quiz');
+  });
+
+  /* ---------- registration ---------- */
+  function makeCode(name){
+    var first = (name.trim().split(/\s+/)[0] || 'FRIEND').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6) || 'FRIEND';
+    var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', s = '';
+    for (var i = 0; i < 3; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+    return first + '-' + s;
+  }
+  function cleanPhone(v){
+    var d = v.replace(/[^0-9]/g, '');
+    if (d.length === 12 && d.indexOf('91') === 0) d = d.slice(2);
+    return d;
+  }
+  $('regform').addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = $('f-name').value.trim(), college = $('f-college').value.trim(), wa = cleanPhone($('f-wa').value);
+    var err = '';
+    if (name.length < 2) err = 'Enter your name.';
+    else if (college.length < 3) err = 'Enter your college name.';
+    else if (!/^[6-9][0-9]{9}$/.test(wa)) err = 'Enter a 10-digit Indian mobile number that starts with 6, 7, 8 or 9.';
+    $('ferr').textContent = err;
+    if (err) return;
+    reg = {name:name, college:college, wa:wa, project:project ? project.name : '', code:makeCode(name), ref:pendingRef, seat:SEAT_BASE + 1, at:Date.now()};
+    store.set('apm-reg', reg);
+    track('reg');
+    applyRegistered(true);
+  });
+
+  function baseUrl(){
+    var h = String(location.href || '');
+    return /^https?:/i.test(h) ? h.split('#')[0] : '';
+  }
+  function shareText(){
+    return 'Free workshop: "Build Your First AI Project in 60 Minutes". I am building ' + reg.project +
+      '. Only 500 seats. Grab yours: ' + $('reflink').value;
+  }
+  function applyRegistered(scroll){
+    $('quiz').hidden = true; $('result').hidden = true; $('ticket').hidden = false;
+    $('tseat').textContent = '#' + reg.seat;
+    $('tname').textContent = reg.name;
+    $('tcollege').textContent = reg.college;
+    $('tproject').textContent = reg.project || 'Your project is picked in the session';
+    var b = baseUrl();
+    $('reflink').value = b ? b + '#ref-' + reg.code : 'Referral code: ' + reg.code;
+    $('wa').href = 'https://wa.me/?text=' + encodeURIComponent(shareText());
+    updateSeats(); renderBoard();
+    if (scroll) go('ticket');
+  }
+  $('wa').addEventListener('click', function(){ track('share'); });
+  $('copylink').addEventListener('click', function(){
+    var inp = $('reflink');
+    function fallback(){
+      inp.focus(); inp.select();
+      $('copynote').textContent = 'Link selected. Press and hold, then tap Copy.';
+    }
+    try {
+      navigator.clipboard.writeText(inp.value).then(function(){
+        $('copynote').textContent = 'Link copied. Paste it in your class and club groups.';
+        track('share');
+      }, fallback);
+    } catch(e){ fallback(); }
+  });
+
+  /* ---------- referral banner ---------- */
+  function readRef(){
+    var m = /^#ref-([A-Za-z0-9-]{3,16})$/.exec(location.hash || '');
+    if (m){
+      pendingRef = m[1].toUpperCase();
+      var bar = $('refbar');
+      bar.textContent = 'A friend invited you with code ' + pendingRef + '. It is saved with your registration.';
+      bar.hidden = false;
+    }
+  }
+  window.addEventListener('hashchange', readRef);
+
+  /* ---------- seats + leaderboard (sample data) ---------- */
+  var BOARD = [
+    ["Ridgeview Institute of Technology",58],["Lakshya College of Engineering",47],["Bayside Engineering College",39],
+    ["Northfield Technical University",31],["Greenfield Institute of Technology",24],["Tungabhadra College of Engineering",17]
+  ];
+  function updateSeats(){
+    var n = SEAT_BASE + (reg ? 1 : 0);
+    $('seatsText').textContent = n + ' of 500 seats taken';
+    $('seatsFill').style.width = (n / 500 * 100) + '%';
+  }
+  function norm(s){ return s.toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function renderBoard(){
+    var rows = BOARD.map(function(r){ return {name:r[0], n:r[1], me:false}; });
+    if (reg){
+      var hit = rows.filter(function(r){ return norm(r.name) === norm(reg.college); })[0];
+      if (hit){ hit.n += 1; hit.me = true; }
+      else rows.push({name:reg.college, n:1, me:true});
+    }
+    rows.sort(function(a, b){ return b.n - a.n; });
+    var shown = rows.slice(0, 6);
+    var meIdx = rows.findIndex(function(r){ return r.me; });
+    if (meIdx >= 6) shown.push(rows[meIdx]);
+    var max = rows[0].n, ol = $('board');
+    ol.textContent = '';
+    shown.forEach(function(r){
+      var rank = rows.indexOf(r) + 1;
+      var li = document.createElement('li');
+      li.className = (rank === 1 ? 'top ' : '') + (r.me ? 'me' : '');
+      var a = document.createElement('span'); a.className = 'rank'; a.textContent = rank;
+      var b = document.createElement('span'); b.className = 'bname'; b.textContent = r.name;
+      if (r.me){ var t = document.createElement('span'); t.className = 'tag'; t.textContent = 'you'; b.appendChild(t); }
+      var c = document.createElement('span'); c.className = 'bcount'; c.textContent = r.n;
+      var bar = document.createElement('div'); bar.className = 'bbar';
+      var f = document.createElement('span'); f.style.width = Math.max(3, r.n / max * 100) + '%';
+      bar.appendChild(f);
+      li.appendChild(a); li.appendChild(b); li.appendChild(c); li.appendChild(bar);
+      ol.appendChild(li);
+    });
+  }
+
+  /* ---------- plan model ---------- */
+  var SL = [
+    {k:'groups', label:'WhatsApp groups reached', min:10, max:100, step:5, fmt:function(v){ return v + ' groups'; }},
+    {k:'wa', label:'Group members who register', min:1, max:8, step:.5, fmt:function(v){ return v.toFixed(1) + '%'; }},
+    {k:'com', label:'Community viewers who register', min:.4, max:3, step:.2, fmt:function(v){ return v.toFixed(1) + '%'; }},
+    {k:'share', label:'Registrants who share their link', min:10, max:60, step:5, fmt:function(v){ return v + '%'; }},
+    {k:'inv', label:'Friends each sharer invites', min:2, max:8, step:1, fmt:function(v){ return v + ' friends'; }},
+    {k:'conv', label:'Invited friends who register', min:4, max:16, step:1, fmt:function(v){ return v + '%'; }}
+  ];
+  var PRESETS = {
+    cons:{groups:25, wa:3, com:.8, share:25, inv:4, conv:6},
+    base:{groups:40, wa:4.5, com:1.2, share:40, inv:5, conv:10},
+    stretch:{groups:60, wa:5.5, com:1.6, share:45, inv:5, conv:11}
+  };
+  var vals = Object.assign({}, PRESETS.base);
+
+  function model(v){
+    var wa = Math.round(v.groups * 150 * v.wa / 100);
+    var com = Math.round(8000 * v.com / 100);
+    var paid = Math.round(500 / 3 * 0.30);
+    var base = wa + com + paid;
+    var k = Math.min(.9, (v.share / 100) * v.inv * (v.conv / 100));
+    var ratio = k / (1 - k);
+    var ref = Math.round(base * ratio);
+    return {wa:wa, com:com, paid:paid, ref:ref, total:base + ref, ratio:ratio};
+  }
+  function buildSliders(){
+    var box = $('sliders');
+    SL.forEach(function(s){
+      var row = document.createElement('div'); row.className = 'srow';
+      var top = document.createElement('div'); top.className = 'top';
+      var lab = document.createElement('label'); lab.setAttribute('for', 's-' + s.k); lab.textContent = s.label;
+      lab.style.fontWeight = '500';
+      var out = document.createElement('output'); out.id = 'o-' + s.k; out.setAttribute('for', 's-' + s.k);
+      top.appendChild(lab); top.appendChild(out);
+      var inp = document.createElement('input');
+      inp.type = 'range'; inp.id = 's-' + s.k; inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = vals[s.k];
+      inp.addEventListener('input', function(){
+        vals[s.k] = parseFloat(inp.value);
+        syncPresetButtons(); renderModel();
+      });
+      row.appendChild(top); row.appendChild(inp); box.appendChild(row);
+    });
+  }
+  function syncSliders(){
+    SL.forEach(function(s){ $('s-' + s.k).value = vals[s.k]; });
+  }
+  function syncPresetButtons(){
+    document.querySelectorAll('#presets button').forEach(function(b){
+      var p = PRESETS[b.getAttribute('data-p')];
+      var same = SL.every(function(s){ return Math.abs(p[s.k] - vals[s.k]) < 1e-9; });
+      b.setAttribute('aria-pressed', same ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('#presets button').forEach(function(b){
+    b.addEventListener('click', function(){
+      vals = Object.assign({}, PRESETS[b.getAttribute('data-p')]);
+      syncSliders(); syncPresetButtons(); renderModel();
+    });
+  });
+  function renderModel(){
+    SL.forEach(function(s){ $('o-' + s.k).textContent = s.fmt(vals[s.k]); });
+    var m = model(vals), t = m.total, TARGET = 500;
+    $('ptotal').textContent = t;
+    var ok = t >= TARGET, st = $('pstatus');
+    st.textContent = ok ? 'On target' : 'Short by ' + (TARGET - t);
+    st.className = 'pill ' + (ok ? 'ok' : 'warn');
+
+    var scale = Math.max(TARGET, t);
+    var parts = [
+      ['s1','WhatsApp groups', m.wa], ['s2','Referral loop', m.ref], ['s3','LinkedIn, Instagram, Discord', m.com], ['s4','₹500 post boost', m.paid]
+    ];
+    var stack = $('pstack'); stack.textContent = '';
+    var lg = $('plegend'); lg.textContent = '';
+    parts.forEach(function(p){
+      var d = document.createElement('div'); d.className = p[0]; d.style.width = (p[2] / scale * 100) + '%'; stack.appendChild(d);
+      var li = document.createElement('li');
+      var sw = document.createElement('i'); sw.className = p[0];
+      var nm = document.createElement('span'); nm.textContent = p[1];
+      var n = document.createElement('span'); n.className = 'n'; n.textContent = p[2];
+      var pc = document.createElement('span'); pc.className = 'p'; pc.textContent = (t ? Math.round(p[2] / t * 100) : 0) + '%';
+      li.appendChild(sw); li.appendChild(nm); li.appendChild(n); li.appendChild(pc); lg.appendChild(li);
+    });
+    $('pstack').setAttribute('aria-label', 'Registrations by channel: ' + parts.map(function(p){ return p[1] + ' ' + p[2]; }).join(', '));
+    $('pmarker').style.left = (TARGET / scale * 100) + '%';
+
+    $('pcost').textContent = '₹' + (2000 / t).toFixed(1);
+    $('pday').textContent = Math.ceil(TARGET / 7);
+
+    var gap = $('pgap');
+    if (ok){
+      gap.textContent = 'Clears the target by ' + (t - TARGET) + '. Spare capacity covers groups that go quiet on Day 3.';
+    } else {
+      var per = 150 * vals.wa / 100 * (1 + m.ratio);
+      var need = Math.ceil((TARGET - t) / per);
+      gap.textContent = 'Short by ' + (TARGET - t) + '. The Day 4 fix is about ' + need + ' more WhatsApp groups, since each group brings roughly ' + per.toFixed(1) + ' registrations including referrals.';
+    }
+  }
+
+  /* ---------- reset ---------- */
+  $('reset').addEventListener('click', function(){
+    store.del('apm-reg'); store.del('apm-ev');
+    reg = null; ev = {visits:0, qstart:0, qdone:0, reg:0, share:0}; started = false;
+    step = 0; ans = {branch:null, interest:null, level:null};
+    $('ticket').hidden = true; $('result').hidden = true; $('quiz').hidden = false;
+    $('regform').reset(); $('ferr').textContent = ''; $('copynote').textContent = '';
+    renderQuiz(); updateSeats(); renderBoard(); renderEvents();
+    go('quiz');
+  });
+
+  /* ---------- boot ---------- */
+  ev.visits = (ev.visits || 0) + 1; store.set('apm-ev', ev);
+  readRef();
+  buildSliders(); syncPresetButtons(); renderModel();
+  renderQuiz(); updateSeats(); renderBoard(); renderEvents();
+  if (reg) applyRegistered(false);
+})();
+</script>
+
+</body>
+</html>
